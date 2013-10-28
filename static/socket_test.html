@@ -1,0 +1,57 @@
+<html>
+<head>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script type="text/javascript" src="/_ah/channel/jsapi"></script>
+</head>
+<body>
+  <script>
+    window.createChannelGroup = function() {
+      $.getJSON("/createChannelGroup", function(data) {
+          console.log("channel group created. id=" + data.id);
+      });
+    };
+
+    window.joinChannelGroup = function(id) {
+      $.getJSON("/joinChannelGroup?id=" + id, function(data) {
+          var token = data.token;
+          channel = new goog.appengine.Channel(token);
+          window.token = data.token;
+          socket = channel.open(function(foo) {
+            console.log(foo);
+          });
+
+          socket.onopen = function() {
+            console.log('channel ' + token + ' for group ' + id + ' opened.');
+          };
+          socket.onmessage = function(message) {
+            var data = JSON.parse(message.data);
+            var latency = new Date().getTime() - data.__timestamp__;
+            console.log('channel ' + token + ' for group ' + id + ' got a message: ' + data.message +
+                ". latency=" + latency);
+          };
+          socket.onerror = function(error) {
+            console.log('channel ' + token + ' for group ' + id + ' got an error: ' + error);
+          };
+          socket.onclose = function() {
+            console.log('channel ' + token + ' for group ' + id + ' closed.');
+          };
+
+          console.log("channel group joined. token=" + token);
+      });
+    };
+
+    window.sendMessage = function(group, message) {
+      var data = {
+        __timestamp__: new Date().getTime(),
+        message: message
+      }
+      var messageString = JSON.stringify(data);
+      $.post("/forwardMessage?" + $.param({
+        group: group,
+        sender: window.token,
+        message: messageString
+      }));
+    };
+  </script>
+</body>
+</html>
